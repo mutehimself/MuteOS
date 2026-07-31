@@ -18,10 +18,15 @@ Design summary:
 
 Also wired the existing `ps` application to show the priority/level column under `mlfq_scheduler`, matching its existing behavior for the epoch/priority schedulers.
 
-### In progress
-- Benchmarking harness comparing turnaround time, interactive latency, and throughput of MLFQ against round-robin and priority scheduling under mixed CPU-bound/interactive workloads (tracking [theseus-os/Theseus#758](https://github.com/theseus-os/Theseus/issues/758)).
-- Design doc with the benchmark results and the tradeoffs considered.
-- An upstream PR against `theseus-os/Theseus` for the scheduler itself.
+Full design rationale (why linear-growing quanta, why CPU-time-based demotion instead of counting yields, why blocking is never penalized, the priority-inheritance interaction) is in [`docs/mlfq-scheduler.md`](docs/mlfq-scheduler.md).
+
+### Benchmarking (`applications/scheduler_eval -m`)
+`scheduler_eval` already existed upstream as a scheduler benchmark, but its only mode ran identical tasks and so couldn't distinguish MLFQ's actual goal — favoring interactive tasks — from round-robin. Added a `-m`/`--mixed` mode (tracking [theseus-os/Theseus#758](https://github.com/theseus-os/Theseus/issues/758)) that spawns a configurable mix of CPU-bound tasks (busy loop, no voluntary yields) and interactive tasks (short work bursts, yields between each), and reports each group's completion-latency distribution separately. See the doc above for the exact methodology.
+
+### Status
+- Scheduler and benchmark: implemented, and both type-check cleanly against the real `x86_64-unknown-theseus` kernel target (`cargo check`).
+- **Not yet boot-tested.** The dev environment this was built in is missing `nasm`, one of Theseus's build dependencies, so `make run` hasn't been run end-to-end and there are no empirical benchmark numbers yet. `docs/mlfq-scheduler.md` has exact repro steps to fill that in once `nasm` is available.
+- Upstream PR against `theseus-os/Theseus` for the scheduler: not yet opened — planned once it's actually been booted and benchmarked.
 
 ## Building and running
 
