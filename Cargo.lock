@@ -228,6 +228,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fe8f5a8a398345e52358e18ff07cc17a568fbca5c6f73873d3a62056309603"
 
 [[package]]
+name = "bench_headless"
+version = "0.1.0"
+dependencies = [
+ "app_io",
+ "cpu",
+ "log",
+ "qemu-exit",
+ "scheduler_eval",
+]
+
+[[package]]
 name = "bincode"
 version = "2.0.0-rc.1"
 source = "git+https://github.com/bincode-org/bincode#1ca82752cf8c0391a4d49b8f881b5257f8c81fe8"
@@ -1169,6 +1180,7 @@ dependencies = [
 name = "first_application"
 version = "0.1.0"
 dependencies = [
+ "bench_headless",
  "hello",
  "log",
  "mod_mgmt",
@@ -3153,6 +3165,7 @@ dependencies = [
  "app_io",
  "cpu",
  "getopts",
+ "log",
  "scheduler",
  "spawn",
  "time",

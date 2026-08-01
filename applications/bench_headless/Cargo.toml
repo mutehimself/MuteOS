@@ -1,0 +1,15 @@
+[package]
+name = "bench_headless"
+description = "Runs the scheduler_eval mixed-workload benchmark with fixed parameters and exits QEMU, for headless/CI comparison of scheduler policies"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+app_io = { path = "../../kernel/app_io" }
+cpu = { path = "../../kernel/cpu" }
+log = "0.4.8"
+qemu-exit = "3.0.2"
+scheduler_eval = { path = "../scheduler_eval" }
+
+[lib]
+crate-type = ["rlib"]

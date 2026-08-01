@@ -26,6 +26,7 @@ spawn = { path = "../spawn" }
 ##       both this dependency and the invocation string in `lib.rs`.
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 qemu_test = { path = "../../applications/qemu_test", optional = true }
+bench_headless = { path = "../../applications/bench_headless", optional = true }
 shell = { path = "../../applications/shell" }
 
 ## Note: aarch64 doesn't yet support the full graphical `shell` application,

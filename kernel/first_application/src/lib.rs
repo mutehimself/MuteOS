@@ -28,7 +28,8 @@ use mod_mgmt::CrateNamespace;
 /// See the crate-level docs and this crate's `Cargo.toml` for more.
 const FIRST_APPLICATION_CRATE_NAME: &str = {
     #[cfg(all(target_arch = "x86_64", feature = "qemu_test"))] { "qemu_test-" }
-    #[cfg(all(target_arch = "x86_64", not(feature = "qemu_test")))] { "shell-" }
+    #[cfg(all(target_arch = "x86_64", feature = "bench_headless", not(feature = "qemu_test")))] { "bench_headless-" }
+    #[cfg(all(target_arch = "x86_64", not(feature = "qemu_test"), not(feature = "bench_headless")))] { "shell-" }
     #[cfg(target_arch = "aarch64")] { "hello-" }
 };
 

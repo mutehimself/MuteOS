@@ -178,7 +178,7 @@ fn worker(num_yields: u32) {
 /// # in the Theseus shell:
 /// scheduler_eval -m --cpu-bound 4 --interactive 16
 /// ```
-fn run_mixed(
+pub fn run_mixed(
     cpu_bound: usize,
     interactive: usize,
     cpu_iterations: usize,
@@ -239,6 +239,7 @@ fn run_mixed(
     print_stats("cpu-bound", &cpu_results);
     print_stats("interactive", &interactive_results);
     println!("makespan: {makespan:#?}");
+    log::info!("scheduler_eval mixed-mode makespan: {makespan:#?}");
 }
 
 /// Busy-works for `iterations` steps without ever yielding voluntarily, so
@@ -290,7 +291,12 @@ fn print_stats(label: &str, results: &[Arc<AtomicU64>]) {
     let max = latencies_us[n - 1];
     let p50 = latencies_us[n / 2];
 
-    println!(
+    let line = alloc::format!(
         "{label:<12} n={n:<4} avg={avg:>9}us  p50={p50:>9}us  min={min:>9}us  max={max:>9}us"
     );
+    println!("{line}");
+    // Also emit via the `log` crate so results are visible in the serial
+    // debug log even when there's no interactive console attached (e.g.
+    // when driven headlessly via `bench_headless`).
+    log::info!("scheduler_eval: {line}");
 }

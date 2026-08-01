@@ -143,20 +143,56 @@ remove the space rather than working around it.
 
 ## Quantitative results
 
-**Not yet collected.** `applications/scheduler_eval -m` has been built into
-this same image and is present in `/namespaces/_applications`, but running
-it interactively requires driving Theseus's shell, which is bound to the
-graphical console by default; a second shell can attach over a serial port,
-but it's spawned on demand by an interrupt-driven connection-detector task,
-and getting that handshake working reliably from a fully headless,
-non-interactive script (rather than a real terminal attached to QEMU's
-allocated pty) turned out to be a deeper rabbit hole than was worth
-chasing further here.
+Driving `scheduler_eval -m` through Theseus's interactive shell turned out to
+be a dead end headlessly: the shell is bound to the graphical console by
+default, and the serial-attached fallback shell is spawned on demand by an
+interrupt-driven connection-detector task that a scripted pty write doesn't
+reliably trigger without a real terminal attached.
 
-To fill in this section, from a normal interactive terminal:
+Instead of fighting that, this uses the same mechanism Theseus's own CI does
+for headless automation: `applications/qemu_test` replaces the interactive
+shell with a different `first_application` at boot, selected via a Cargo
+feature flag, and signals completion through the `isa-debug-exit` QEMU
+device rather than relying on any console at all. `applications/bench_headless`
+follows the same pattern — it boots straight into a fixed
+`scheduler_eval::run_mixed(4, 16, 20_000_000, 200, 20_000, ...)` call (no
+shell, no argv), and both the run itself and `scheduler_eval::print_stats`
+emit through `log::info!` in addition to `println!`, so results land in the
+serial debug log regardless of whether a console is attached:
+
 ```sh
-make run THESEUS_CONFIG=mlfq_scheduler FEATURES="--workspace --features theseus_features/scheduler_eval"
-# in the Theseus shell:
-scheduler_eval -m --cpu-bound 4 --interactive 16
+make run THESEUS_CONFIG=mlfq_scheduler FEATURES="--workspace --features first_application/bench_headless" graphic=no
 ```
-Then repeat with `make run FEATURES="--workspace --features theseus_features/scheduler_eval"` (default round-robin) and compare the avg/p50 interactive-task latency and CPU-bound makespan between the two runs.
+
+### Results (one run each, 4 CPU-bound + 16 interactive tasks, all pinned to CPU 0)
+
+| Scheduler | CPU-bound avg latency | Interactive avg latency | Interactive / CPU-bound | Makespan |
+|---|---:|---:|---:|---:|
+| round-robin (default) | 1382.3ms | 772.0ms | 0.56 | 1446.2ms |
+| `mlfq_scheduler` | 918.1ms | 406.4ms | 0.44 | 962.8ms |
+
+Two things stand out:
+
+1. **Interactive-task latency roughly halves** under MLFQ relative to
+   round-robin (406ms vs. 772ms) — this is the core hypothesis the scheduler
+   was designed around, and it holds: tasks that yield before exhausting
+   their quantum stay at a high priority level and get serviced far faster
+   than the CPU-bound tasks competing for the same core, without any static
+   classification of which task is which.
+2. **CPU-bound latency and overall makespan both improved too** (918ms vs.
+   1382ms, 963ms vs. 1446ms) — this wasn't the primary goal, but is a
+   plausible side effect of quanta that grow with level depth: once a
+   CPU-bound task is demoted, it holds the CPU for a longer, less-frequently
+   interrupted stretch, which cuts total context-switch overhead across the
+   whole run relative to round-robin's fixed short quantum for every task.
+
+**Caveats, stated plainly:** this is one run per scheduler, under QEMU's TCG
+software emulation (no KVM/hardware acceleration available in this
+environment), on a single pinned CPU. Absolute numbers aren't representative
+of real hardware, and a single trial has no error bars — the makespan
+improvement in particular could partly reflect run-to-run emulation
+variance rather than a deterministic effect. The interactive-vs-CPU-bound
+*ratio* within each run is the more trustworthy comparison, since both
+groups in a given run share the same emulation conditions. Repeating this
+with multiple trials per scheduler (and on real hardware or KVM) would be
+the natural next step to firm this up.

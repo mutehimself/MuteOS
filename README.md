@@ -4,9 +4,18 @@ A multi-level feedback queue scheduler, built and verified inside [Theseus OS](h
 
 **tl;dr**
 - Designed and implemented an MLFQ scheduler (`kernel/scheduler_mlfq`) from scratch: 8 priority levels, CPU-time-based demotion (not yield-counting, so it can't be gamed), starvation-proof via periodic priority boosting, and fully wired into priority inheritance so lock-holder boosting still works correctly under it.
-- Extended an existing benchmark tool with a mixed CPU-bound/interactive workload mode to actually measure the thing the scheduler is supposed to improve, rather than just "it compiles."
+- Extended an existing benchmark tool with a mixed CPU-bound/interactive workload mode, ran it headlessly under both schedulers, and **measured a ~2x reduction in interactive-task latency** (406ms vs. 772ms avg) versus round-robin under identical load — the scheduler does what it was designed to do, with a number to prove it, not just an argument for why it should.
 - Took it from source to a booted kernel: built a full OS image and watched it bring up 4 CPUs, initialize memory/ACPI/PCI/framebuffer, and reach a running shell — no panics, no faults.
 - Did this on an immutable Linux host with no direct package manager access, which meant standing up a proper containerized build environment and debugging two separate silent build failures along the way (see below — this part is arguably the more instructive story).
+
+## Measured results
+
+| Scheduler | CPU-bound avg latency | Interactive avg latency | Makespan |
+|---|---:|---:|---:|
+| round-robin (default) | 1382.3ms | 772.0ms | 1446.2ms |
+| **`mlfq_scheduler`** | **918.1ms** | **406.4ms** | **962.8ms** |
+
+4 CPU-bound tasks + 16 interactive tasks, pinned to one CPU, run headlessly inside QEMU (methodology, exact commands, and honest caveats about single-run/emulated-timing variance are in [`docs/mlfq-scheduler.md`](docs/mlfq-scheduler.md#quantitative-results)).
 
 ## Proof it boots
 
@@ -42,9 +51,11 @@ Theseus ships with round-robin, priority, and epoch schedulers, selectable at bu
 
 Full design rationale — why linear quanta, why CPU-time-based demotion instead of yield-counting, the priority-inheritance interaction — is in [`docs/mlfq-scheduler.md`](docs/mlfq-scheduler.md).
 
-## The benchmark (`applications/scheduler_eval -m`)
+## The benchmark (`applications/scheduler_eval -m` + `applications/bench_headless`)
 
 An existing upstream benchmark tool measured aggregate time for N *identical* tasks to yield — useful for raw context-switch overhead, but incapable of showing MLFQ's actual point, since every task in that test behaves the same way regardless of scheduler. Extended it (tracking [theseus-os/Theseus#758](https://github.com/theseus-os/Theseus/issues/758)) with a `-m`/`--mixed` mode that spawns a configurable mix of CPU-bound tasks (busy loop, never yields) and interactive tasks (short work bursts, yields between each), then reports each group's completion-latency distribution (avg/p50/min/max) separately — the metric that actually differentiates a scheduler that favors interactive workloads from one that doesn't.
+
+Running it interactively turned out to need a real terminal (Theseus's serial-attached shell is spawned on demand by an interrupt-driven handshake a headless script can't reliably trigger). Rather than fight that, `applications/bench_headless` uses the same mechanism Theseus's own CI uses for automated testing: a `first_application` Cargo feature flag that boots straight into a fixed benchmark run instead of the interactive shell, signaling completion through QEMU's `isa-debug-exit` device — no console needed at all.
 
 ## Getting it to boot at all: the build-environment debugging
 
@@ -60,8 +71,8 @@ Neither of these had an informative error message pointing at the root cause —
 ## Status
 
 - **Boots successfully** end-to-end with `mlfq_scheduler` active (see above).
-- **Quantitative `scheduler_eval -m` numbers**: not yet collected — the benchmark is built into the image, but running it needs a live interactive shell session; Theseus's console attaches to a serial port on demand via an interrupt-driven handshake that a headless script doesn't reliably trigger. Repro steps for collecting real numbers interactively are in the design doc.
-- **Upstream PR** against `theseus-os/Theseus`: not yet opened — planned once there's benchmark data to go with it.
+- **Benchmarked headlessly**, round-robin vs. `mlfq_scheduler`, with results above and full methodology/caveats in the design doc.
+- **Upstream PR** against `theseus-os/Theseus`: not yet opened.
 
 ## What this is built on
 
