@@ -72,7 +72,7 @@ Neither of these had an informative error message pointing at the root cause —
 
 - **Boots successfully** end-to-end with `mlfq_scheduler` active (see above).
 - **Benchmarked headlessly**, round-robin vs. `mlfq_scheduler`, with results above and full methodology/caveats in the design doc.
-- **Upstream PR** against `theseus-os/Theseus`: not yet opened.
+- **Upstream PR open**: [theseus-os/Theseus#1117](https://github.com/theseus-os/Theseus/pull/1117), addressing [#1096](https://github.com/theseus-os/Theseus/issues/1096) and [#758](https://github.com/theseus-os/Theseus/issues/758).
 
 ## What this is built on
 
