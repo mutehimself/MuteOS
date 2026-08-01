@@ -1,5 +1,8 @@
 # MuteOS
 
+[![Upstream PR](https://img.shields.io/badge/upstream_PR-theseus--os%2FTheseus%20%231117-blue)](https://github.com/theseus-os/Theseus/pull/1117)
+[![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE-MIT)
+
 A multi-level feedback queue scheduler, built and verified inside [Theseus OS](https://github.com/theseus-os/Theseus) — a Rust research operating system — and booted on real SMP hardware emulation with a clean 4-CPU bring-up.
 
 **tl;dr**
@@ -7,6 +10,7 @@ A multi-level feedback queue scheduler, built and verified inside [Theseus OS](h
 - Extended an existing benchmark tool with a mixed CPU-bound/interactive workload mode, ran it headlessly under both schedulers, and **measured a ~2x reduction in interactive-task latency** (406ms vs. 772ms avg) versus round-robin under identical load — the scheduler does what it was designed to do, with a number to prove it, not just an argument for why it should.
 - Took it from source to a booted kernel: built a full OS image and watched it bring up 4 CPUs, initialize memory/ACPI/PCI/framebuffer, and reach a running shell — no panics, no faults.
 - Did this on an immutable Linux host with no direct package manager access, which meant standing up a proper containerized build environment and debugging two separate silent build failures along the way (see below — this part is arguably the more instructive story).
+- Opened it upstream as [theseus-os/Theseus#1117](https://github.com/theseus-os/Theseus/pull/1117) — scoped to a clean branch off the maintainers' current tree (no personal-repo cruft), so it's sitting in front of external reviewers, not just sitting in this repo.
 
 ## Measured results
 
