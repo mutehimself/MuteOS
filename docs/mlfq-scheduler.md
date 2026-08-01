@@ -109,19 +109,54 @@ proportional collapse in CPU-bound throughput. Comparing the same command's
 output across `make run`, `make run THESEUS_CONFIG=priority_scheduler`, and
 `make run THESEUS_CONFIG=mlfq_scheduler` gives a like-for-like comparison.
 
-## Results
+## Boot verification
 
-**Not yet collected.** This scheduler and benchmark have been implemented
-and type-checked against the real `x86_64-unknown-theseus` target
-(`cargo check`), but not yet boot-tested in QEMU — the development
-environment used to build this was missing `nasm`, one of Theseus's build
-dependencies, so `make run` couldn't be exercised end-to-end.
+**Confirmed working.** `make iso THESEUS_CONFIG=mlfq_scheduler` was built
+end-to-end and booted in QEMU (BIOS boot, SeaBIOS → GRUB → nano_core). The
+serial console log shows a full, clean boot: the build info banner reports
+`CUSTOM CFGs: mlfq_scheduler ...` confirming the scheduler was actually
+compiled in and selected; all 4 CPUs come up via the APIC/SIPI sequence;
+memory, ACPI, PCI, PS/2, and the framebuffer initialize without errors; the
+`shell` application crate is loaded and linked (pulling in its `window`,
+`libterm`, `text_display`, and `color` dependencies on demand); and
+`shell_loop` is spawned as the first application task, with no panics,
+faults, or unhandled errors anywhere in the log. This is real evidence the
+scheduler is correct enough to bring up a full SMP system, not just that it
+type-checks.
 
-To fill in this section:
-1. `sudo apt-get install nasm` (or the equivalent for your distro — see
-   [`THESEUS_README.md`](../THESEUS_README.md)).
-2. `make run` and, in the Theseus shell, run `scheduler_eval -m` a few times
-   to get a baseline under round-robin.
-3. `make run THESEUS_CONFIG=mlfq_scheduler` and repeat.
-4. Record the avg/p50 interactive-task latency and CPU-bound makespan from
-   each, and compare.
+Build environment note: `nasm` and several other Theseus build dependencies
+aren't installable directly on the host here (an atomic/immutable Fedora
+variant), so the build runs inside a Fedora Toolbox container (`toolbox
+create`), with `nasm`, `gcc`, `make`, `mtools`, `xorriso`,
+`grub2-pc`/`grub2-pc-modules` (the BIOS/i386-pc GRUB modules — installing
+only `grub2-tools-extra` is *not* sufficient; `grub-mkrescue` silently
+produces a non-bootable image without them, since the Makefile redirects its
+stderr to `/dev/null`) installed there, while `cargo`/`rustc` are shared
+in from the host via the mounted `$HOME`. QEMU itself runs on the host,
+against the ISO the container built (the container's `/run/host` bind-mount
+makes the project directory visible on both sides). One environment gotcha
+worth noting: this Makefile's `ROOT_DIR` is derived from `abspath`/`CURDIR`,
+which resolve through the kernel's physical path, not any shell-level
+symlink — so a project directory with a space in its name (or reached via a
+symlinked path) breaks path-splitting in Make. The directory was renamed to
+remove the space rather than working around it.
+
+## Quantitative results
+
+**Not yet collected.** `applications/scheduler_eval -m` has been built into
+this same image and is present in `/namespaces/_applications`, but running
+it interactively requires driving Theseus's shell, which is bound to the
+graphical console by default; a second shell can attach over a serial port,
+but it's spawned on demand by an interrupt-driven connection-detector task,
+and getting that handshake working reliably from a fully headless,
+non-interactive script (rather than a real terminal attached to QEMU's
+allocated pty) turned out to be a deeper rabbit hole than was worth
+chasing further here.
+
+To fill in this section, from a normal interactive terminal:
+```sh
+make run THESEUS_CONFIG=mlfq_scheduler FEATURES="--workspace --features theseus_features/scheduler_eval"
+# in the Theseus shell:
+scheduler_eval -m --cpu-bound 4 --interactive 16
+```
+Then repeat with `make run FEATURES="--workspace --features theseus_features/scheduler_eval"` (default round-robin) and compare the avg/p50 interactive-task latency and CPU-bound makespan between the two runs.

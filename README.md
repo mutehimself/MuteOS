@@ -24,9 +24,9 @@ Full design rationale (why linear-growing quanta, why CPU-time-based demotion in
 `scheduler_eval` already existed upstream as a scheduler benchmark, but its only mode ran identical tasks and so couldn't distinguish MLFQ's actual goal — favoring interactive tasks — from round-robin. Added a `-m`/`--mixed` mode (tracking [theseus-os/Theseus#758](https://github.com/theseus-os/Theseus/issues/758)) that spawns a configurable mix of CPU-bound tasks (busy loop, no voluntary yields) and interactive tasks (short work bursts, yields between each), and reports each group's completion-latency distribution separately. See the doc above for the exact methodology.
 
 ### Status
-- Scheduler and benchmark: implemented, and both type-check cleanly against the real `x86_64-unknown-theseus` kernel target (`cargo check`).
-- **Not yet boot-tested.** The dev environment this was built in is missing `nasm`, one of Theseus's build dependencies, so `make run` hasn't been run end-to-end and there are no empirical benchmark numbers yet. `docs/mlfq-scheduler.md` has exact repro steps to fill that in once `nasm` is available.
-- Upstream PR against `theseus-os/Theseus` for the scheduler: not yet opened — planned once it's actually been booted and benchmarked.
+- **Boots successfully.** `make iso THESEUS_CONFIG=mlfq_scheduler` builds end-to-end and boots cleanly in QEMU — full SMP bring-up (4 CPUs), memory/ACPI/PCI/PS2/framebuffer init, and the shell application loaded, with the build banner confirming `mlfq_scheduler` was actually compiled in. No panics or errors. See `docs/mlfq-scheduler.md` for the full verification writeup and the (atomic-Linux-specific) build environment setup.
+- Quantitative benchmark numbers from `scheduler_eval -m`: not yet collected — the benchmark is built into the image, but running it needs an interactive shell session rather than a headless script. Repro steps are in the design doc.
+- Upstream PR against `theseus-os/Theseus` for the scheduler: not yet opened — planned once there's benchmark data to go with it.
 
 ## Building and running
 
